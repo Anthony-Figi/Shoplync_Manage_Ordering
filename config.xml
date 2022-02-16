@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>shoplync_manage_ordering</name>
+	<displayName><![CDATA[Manage Ordering Of Products]]></displayName>
+	<version><![CDATA[1.0.0]]></version>
+	<description><![CDATA[A SMS Pro add-on module. Designed to allow store administrators to block customers from ordering a specific product/product combination.]]></description>
+	<author><![CDATA[Shoplync]]></author>
+	<tab><![CDATA[front_office_features]]></tab>
+	<is_configurable>1</is_configurable>
+	<need_instance>1</need_instance>
+</module>
