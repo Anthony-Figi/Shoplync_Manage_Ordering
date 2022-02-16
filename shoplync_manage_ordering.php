@@ -218,11 +218,17 @@ class Shoplync_manage_ordering extends Module
     public function QueryDbWithIdAttribute($id_attribute, $product_id)
     {
         $result = "";
-        if(isset($id_attribute) && isset($product_id))
+        
+        if(isset($product_id))
         {
             $query = 'SELECT sa.id_stock_available, sa.id_product, sa.id_product_attribute, sa.out_of_stock, sa.quantity, sa.id_shop, pac.id_attribute FROM `' 
-            . _DB_PREFIX_ . 'stock_available` AS sa RIGHT JOIN `'._DB_PREFIX_.'product_attribute_combination` AS pac ON sa.id_product_attribute = pac.id_product_attribute '
-            .'WHERE pac.id_attribute = '.$id_attribute.' AND sa.id_product ='.$product_id.' LIMIT 1;';
+            . _DB_PREFIX_ . 'stock_available` AS sa LEFT JOIN `'._DB_PREFIX_.'product_attribute_combination` AS pac ON sa.id_product_attribute = pac.id_product_attribute ';
+            
+            if(isset($id_attribute) && $id_attribute > 0)
+                $query = $query.'WHERE pac.id_attribute = '.$id_attribute.' AND sa.id_product ='.$product_id.' LIMIT 1;';
+            else
+                $query = $query.'WHERE sa.id_product ='.$product_id.' LIMIT 1;';
+            
             $result = Db::getInstance()->executeS($query);
         }
         return $result;
@@ -239,26 +245,38 @@ class Shoplync_manage_ordering extends Module
         {
             $product = new Product($params['product']->getId());
             
-            if(isset($product) && $product->hasAttributes() > 0)
+            if(isset($product))
             {
-                $combination = $params['product']->getAttributes();
-                $combination = array_pop($combination);
-                if(is_array($combination) && array_key_exists('id_attribute', $combination) && isset($combination['id_attribute']) && strlen($combination['id_attribute'] > 0))
+                if($product->hasAttributes() > 0)
+                {
+                    $combination = $params['product']->getAttributes();
+                    $combination = array_pop($combination);
+                }
+                else
+                    $combination = array('id_attribute' => 0);
+
+                if(is_array($combination) && array_key_exists('id_attribute', $combination) && isset($combination['id_attribute']))
                 {         
                     $result = $this->QueryDbWithIdAttribute($combination['id_attribute'], $product->id);
                     if (!empty($result) && is_array($result))
                     {
                         $result = array_pop($result);
-                        if(array_key_exists('out_of_stock', $result) && $result['out_of_stock'] == $deny)//'<script>formBtn.setAttribute("disabled", "");'
+                        if(array_key_exists('out_of_stock', $result) && $result['out_of_stock'] == $deny)
+                        {
                             $code = '<script>setTimeout(function() {'
                             .' document.getElementById("product-availability").innerHTML ='
                             .' \'<i class="material-icons rtl-no-flip product-unavailable">block</i> Product Unavailable To Order\';'
-                            .' document.querySelector(".add-to-cart").setAttribute("disabled", ""); console.log("asdfa"); }, 100);'
+                            .' document.querySelector(".add-to-cart").setAttribute("disabled", ""); console.log("This Product Is Unavailable To Order"); }, 100);'
                             .'</script>';
+                            
+                            if($combination['id_attribute'] == 0)
+                                $code = $code.'<script>window.onload = setTimeout(function(){document.querySelector(".add-to-cart").setAttribute("disabled", "");}, 200);</script>';
+                        }
                     }                
                 }
                 return '<!--Product Manage Ordering -->'.$code;
             }
+            return '<!--Product Manage Ordering -->';
         }
     }
 }
