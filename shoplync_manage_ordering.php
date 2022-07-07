@@ -261,11 +261,12 @@ class Shoplync_manage_ordering extends Module
                     if (!empty($result) && is_array($result))
                     {
                         $result = array_pop($result);
-                        if(array_key_exists('out_of_stock', $result) && $result['out_of_stock'] == $deny)
+                        if(array_key_exists('out_of_stock', $result) && $result['out_of_stock'] == $deny 
+                            && array_key_exists('quantity', $result) && $result['quantity'] <= 0)//only deny not in stock items
                         {
                             $code = '<script>setTimeout(function() {'
                             .' document.getElementById("product-availability").innerHTML ='
-                            .' \'<i class="material-icons rtl-no-flip product-unavailable">block</i> Product Unavailable To Order\';'
+                            .' \'<!--Status Edited--><i class="material-icons rtl-no-flip product-unavailable">block</i> Product Unavailable To Order\';'
                             .' document.querySelector(".add-to-cart").setAttribute("disabled", ""); console.log("This Product Is Unavailable To Order"); }, 100);'
                             .'</script>';
                             
