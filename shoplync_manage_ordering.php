@@ -211,7 +211,7 @@ class Shoplync_manage_ordering extends Module
     /*
     SELECT sa.id_stock_available, sa.id_product, sa.id_product_attribute, sa.out_of_stock, sa.quantity, sa.id_shop, pac.id_attribute
     FROM ps_ca_stock_available as sa
-    RIGHT JOIN ps_ca_product_attribute_combination as pac
+    LEFT JOIN ps_ca_product_attribute_combination as pac
     ON sa.id_product_attribute = pac.id_product_attribute
     WHERE sa.id_product = 8036;
     */
@@ -234,6 +234,34 @@ class Shoplync_manage_ordering extends Module
         return $result;
     }
     
+    /*
+    SELECT sa.id_product, sa.id_product_attribute, pa.reference, pa.mpn, sa.out_of_stock, sa.quantity 
+    FROM ps_ca_stock_available sa
+    LEFT JOIN ps_ca_product_attribute pa
+    ON sa.id_product = pa.id_product AND sa.id_product_attribute = pa.id_product_attribute
+    WHERE sa.id_product = 28460 AND pa.mpn = '0094-43702' LIMIT 1; 
+    */
+    public function QueryDbWithSKU($sku, $product_id)
+    {
+        $result = "";
+        
+        if(isset($product_id))
+        {
+            $query = 'SELECT sa.id_product, sa.id_product_attribute, pa.reference, pa.mpn, sa.out_of_stock, sa.quantity FROM `' 
+            . _DB_PREFIX_ . 'stock_available` AS sa LEFT JOIN `'._DB_PREFIX_.'product_attribute` AS pa ON sa.id_product = pa.id_product AND sa.id_product_attribute = pa.id_product_attribute ';
+            
+            if(isset($sku) && $sku > 0)
+                $query = $query.'WHERE pa.mpn = "'.$sku.'" AND sa.id_product = '.$product_id.' LIMIT 1;';
+            else
+                $query = $query.'WHERE sa.id_product ='.$product_id.' LIMIT 1;';
+            
+            
+            //error_log($query);
+            
+            $result = Db::getInstance()->executeS($query);
+        }
+        return $result;
+    }
     public function hookDisplayProductAdditionalInfo($params)
     {
         $default = 2;
@@ -244,7 +272,6 @@ class Shoplync_manage_ordering extends Module
         if(isset($params['product']) && Configuration::get('SHOPLYNC_MANAGE_ORDERING_LIVE_MODE', true))
         {
             $product = new Product($params['product']->getId());
-            
             if(isset($product))
             {
                 if($product->hasAttributes() > 0)
@@ -253,14 +280,19 @@ class Shoplync_manage_ordering extends Module
                     $combination = array_pop($combination);
                 }
                 else
-                    $combination = array('id_attribute' => 0);
+                    $combination = array('mpn' => 0);
 
-                if(is_array($combination) && array_key_exists('id_attribute', $combination) && isset($combination['id_attribute']))
+                if(is_array($combination) && array_key_exists('mpn', $combination) && isset($combination['mpn']))
                 {         
-                    $result = $this->QueryDbWithIdAttribute($combination['id_attribute'], $product->id);
+                    //$result = $this->QueryDbWithIdAttribute($combination['id_attribute'], $product->id);
+                    
+                    $result = $this->QueryDbWithSKU($combination['mpn'], $product->id);
+                    //error_log('rsult: '.print_r($result, true));
                     if (!empty($result) && is_array($result))
                     {
                         $result = array_pop($result);
+                        //error_log('manage ord: '.print_r($result, true));
+                        
                         if(array_key_exists('out_of_stock', $result) && $result['out_of_stock'] == $deny 
                             && array_key_exists('quantity', $result) && $result['quantity'] <= 0)//only deny not in stock items
                         {
@@ -270,7 +302,7 @@ class Shoplync_manage_ordering extends Module
                             .' document.querySelector(".add-to-cart").setAttribute("disabled", ""); console.log("This Product Is Unavailable To Order"); }, 100);'
                             .'</script>';
                             
-                            if($combination['id_attribute'] == 0)
+                            if($combination['mpn'] == 0)
                                 $code = $code.'<script>window.onload = setTimeout(function(){document.querySelector(".add-to-cart").setAttribute("disabled", "");}, 200);</script>';
                         }
                     }                
